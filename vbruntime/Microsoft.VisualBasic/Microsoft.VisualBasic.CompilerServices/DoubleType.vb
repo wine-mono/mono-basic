@@ -30,6 +30,7 @@
 ' WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 Imports System
+Imports System.Globalization
 Imports System.Runtime.InteropServices
 
 Namespace Microsoft.VisualBasic.CompilerServices
@@ -88,6 +89,12 @@ Namespace Microsoft.VisualBasic.CompilerServices
             If (Value Is Nothing) Then
                 Return 0
             End If
+
+			Value = Value.TrimStart(Nothing)
+
+			If Value.StartsWith("&H", StringComparison.CurrentCultureIgnoreCase) Then
+				Return Int64.Parse(Value.Substring(2), NumberStyles.AllowHexSpecifier)
+			End If
 
             Return Double.Parse(Value, NumberFormat)
         End Function
