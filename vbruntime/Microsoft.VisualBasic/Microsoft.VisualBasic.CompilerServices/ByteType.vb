@@ -42,7 +42,7 @@ Namespace Microsoft.VisualBasic.CompilerServices
             Try
                 If value Is Nothing Then Return 0
 
-				Value = Value.TrimStart(Nothing)
+				Value = Value.TrimStart()
 
                 If Value.StartsWith("&H", StringComparison.CurrentCultureIgnoreCase) Then
                     Return Byte.Parse(Value.Substring(2), NumberStyles.AllowHexSpecifier)

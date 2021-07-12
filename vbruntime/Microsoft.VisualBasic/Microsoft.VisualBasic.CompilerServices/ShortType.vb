@@ -64,7 +64,7 @@ Namespace Microsoft.VisualBasic.CompilerServices
             End If
 
             Try
-				Value = Value.TrimStart(Nothing)
+				Value = Value.TrimStart()
 
                 If Value.StartsWith("&H", StringComparison.CurrentCultureIgnoreCase) Then
                     Return Short.Parse(Value.Substring(2), NumberStyles.AllowHexSpecifier)
