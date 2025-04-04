@@ -26,6 +26,7 @@
 ' WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 '
 
+Imports Microsoft.VisualBasic.OSSpecific
 Imports System.IO
 Imports System.Text
 Imports System.Collections.ObjectModel
@@ -263,11 +264,18 @@ Namespace Microsoft.VisualBasic.FileIO
 
         Private Sub DeleteItem(ByVal Info As Info, ByVal Counter As Integer, ByVal DoUpdate As Boolean)
             Dim Item As String = Info.Name
-            If Info.IsDir Then
-                If DoUpdate Then UpdateUI(Item, Nothing, Nothing, Counter, 0)
+            If DoUpdate Then
+                If Info.IsDir Then
+                    If DoUpdate Then UpdateUI(Item, Nothing, Nothing, Counter, 0)
+                Else
+                    If DoUpdate Then UpdateUI(Path.GetDirectoryName(Item), Nothing, Path.GetFileName(Item), Counter, 0)
+                End If
+            End If
+            If m_Recycle = RecycleOption.SendToRecycleBin Then
+                OSDriver.Driver.TrashPath(Item)
+            ElseIf Info.IsDir Then
                 System.IO.Directory.Delete(Item, False)
             Else
-                If DoUpdate Then UpdateUI(Path.GetDirectoryName(Item), Nothing, Path.GetFileName(Item), Counter, 0)
                 System.IO.File.Delete(Item)
             End If
         End Sub
@@ -313,19 +321,15 @@ Namespace Microsoft.VisualBasic.FileIO
         Private Sub Delete()
             Dim counter As Integer
 
-            If m_Recycle = RecycleOption.SendToRecycleBin Then
-                Throw New NotImplementedException
-            Else
-                For i As Integer = m_Sources.Count - 1 To 0 Step -1
-                    Dim info As Info = m_Sources(i)
-                    Dim item As String = info.Name
+            For i As Integer = m_Sources.Count - 1 To 0 Step -1
+                Dim info As Info = m_Sources(i)
+                Dim item As String = info.Name
 
-                    DeleteItem(info, counter, True)
-                    counter += 1
+                DeleteItem(info, counter, True)
+                counter += 1
 
-                    If m_Cancelled Then Return
-                Next
-            End If
+                If m_Cancelled Then Return
+            Next
 
             UpdateUI(Nothing, Nothing, Nothing, m_Sources.Count, 0)
         End Sub

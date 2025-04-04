@@ -65,6 +65,10 @@ Namespace Microsoft.VisualBasic.OSSpecific
             ThrowNotImplemented("SetTime")
         End Sub
 
+        Overridable Sub TrashPath(ByVal path As String)
+            ThrowNotImplemented("TrashPath")
+        End Sub
+
         Sub ThrowNotImplemented(ByVal Method As String)
             Throw New NotImplementedException(String.Format("'{0}' is not implemented for your operating system.", Method))
         End Sub
