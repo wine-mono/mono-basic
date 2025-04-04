@@ -26,7 +26,10 @@
 ' WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 '
 Imports System
+Imports System.Globalization
+Imports System.IO
 Imports System.Runtime.InteropServices
+Imports System.Text
 
 Namespace Microsoft.VisualBasic.OSSpecific
     Friend Class LinuxDriver
@@ -73,6 +76,97 @@ Namespace Microsoft.VisualBasic.OSSpecific
             ' stime in libc.dll
         End Function
 #End If
+
+        Private Function GetXdgDataHome() As String
+            GetXdgDataHome = Environment.GetEnvironmentVariable("XDG_DATA_HOME")
+
+            If GetXdgDataHome Is Nothing Then
+                GetXdgDataHome = Environment.GetEnvironmentVariable("HOME") & "/.local/share"
+            End If
+        End Function
+
+        Private Sub WriteDesktopGroup(ByVal output As StreamWriter, ByVal name As String)
+            output.Write ("[")
+            output.Write (name)
+            output.Write ("]")
+            output.Write (Constants.vbLf)
+        End Sub
+
+        Private Sub WriteDesktopString(ByVal output As StreamWriter, ByVal key As String, ByVal val As String)
+            output.Write (key)
+            output.Write ("=")
+            output.Write (val.Replace("\", "\\").Replace(Constants.vbLf, "\n").Replace(Constants.vbCr, "\r").Replace(Constants.vbTab, "\t"))
+            output.Write (Constants.vbLf)
+        End Sub
+
+        Private Function CreateNewUtf8File(ByVal pathname As String) As StreamWriter
+            Dim stream As FileStream
+            stream = New FileStream(pathname, FileMode.CreateNew, FileAccess.Write, FileShare.Read)
+            Return New StreamWriter(stream, new UTF8Encoding())
+        End Function
+
+        Private Function CreateUniqueUtf8File(ByVal directory As String, ByVal filename As String,
+                ByVal extension As String, ByVal hashcode as Integer, ByRef outfilename As String) As StreamWriter
+            Dim result As StreamWriter
+
+            outfilename = Nothing
+
+            Try
+                outfilename = Path.Combine(directory, filename & extension)
+                result = CreateNewUtf8File(outfilename)
+                Return result
+            Catch e As IOException
+                ' file exists
+            End Try
+
+            While True
+                outfilename = Path.Combine(directory, filename & hashcode & extension)
+                Try
+                    result = CreateNewUtf8File(outfilename)
+                    Return result
+                Catch e As IOException
+                    ' file exists
+                End Try
+                hashcode = hashcode + 1
+            End While
+        End Function
+
+        Public Overrides Sub TrashPath(ByVal pathname As String)
+            ' Identify user's trash directory
+            Dim xdgTrash As String
+            xdgTrash = Path.Combine(GetXdgDataHome(), "Trash")
+            ' Ensure important paths exist
+            Directory.CreateDirectory (Path.Combine(xdgTrash, "info"))
+            Directory.CreateDirectory (Path.Combine(xdgTrash, "files"))
+            ' Normalize path
+            pathname = Path.GetFullPath(pathname).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            ' Create info file
+            Dim infoFile As StreamWriter
+            Dim infoFileName As String
+            Dim succeeded as Boolean
+            infoFile = CreateUniqueUtf8File(Path.Combine(xdgTrash, "info"), Path.GetFileName(pathname), ".trashinfo", pathname.GetHashCode() Xor GetType(LinuxDriver).GetHashCode(), infoFileName)
+            Try
+                ' Write info file
+                WriteDesktopGroup (infoFile, "Trash Info")
+                WriteDesktopString (infoFile, "Path", Uri.EscapeUriString(pathname))
+                WriteDesktopString (infoFile, "DeletionDate", DateTime.Now.ToString("yyyyMMddTHH:mm:ss", CultureInfo.InvariantCulture))
+                infoFile.Flush
+                ' Move item to trash
+                Dim trashFileName As String
+                trashFileName = Path.Combine(XdgTrash, "files", Path.GetFileNameWithoutExtension(Path.GetFileName(infoFileName)))
+                If Directory.Exists (pathname) Then
+                    Directory.Move (pathname, trashFileName)
+                Else
+                    File.Move (pathname, trashFileName)
+                End If
+                succeeded = True
+            Finally
+                infoFile.Dispose
+                If Not succeeded
+                    File.Delete (infoFileName)
+                End If
+            End Try
+        End Sub
 
     End Class
 End Namespace
