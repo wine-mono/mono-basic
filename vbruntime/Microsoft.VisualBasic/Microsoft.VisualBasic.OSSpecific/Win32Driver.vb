@@ -28,6 +28,7 @@
 
 #If TARGET_JVM = False Then
 
+Imports System.IO
 Imports System.Runtime.InteropServices
 Imports System
 
@@ -88,6 +89,44 @@ Namespace Microsoft.VisualBasic.OSSpecific
             <MarshalAs(UnmanagedType.U2)> Public Second As Short
             <MarshalAs(UnmanagedType.U2)> Public Milliseconds As Short
         End Structure
+
+        <StructLayout(LayoutKind.Sequential, CharSet := CharSet.Unicode)> _
+        Friend Structure ShFileOpStruct
+            Public hwnd As IntPtr
+            Public wFunc As Integer
+            Public pFrom As String
+            Public pTo As String
+            Public fFlags As Short
+            Public fAnyOperationsAborted As Boolean
+            Public hNameMappings As IntPtr
+            Public lpszProgressTitle As String
+        End Structure
+
+        Private Const FOF_SILENT As Short = &H4
+        Private Const FOF_NOCONFIRMATION As Short = &H10
+        Private Const FOF_ALLOWUNDO As Short = &H40
+        Private Const FOF_NOERRORUI As Short = &H400
+
+        Private Const FO_DELETE As Integer = 3
+
+        Declare Unicode Function SHFileOperationW Lib "shell32" (ByRef fileop As ShFileOpStruct) As Integer
+
+        Public Overrides Sub TrashPath(ByVal pathname As String)
+            pathname = Path.GetFullPath(pathname).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+
+            Dim op As New ShFileOpStruct
+
+            op.wFunc = FO_DELETE
+            op.pFrom = pathname & Constants.vbNullChar
+            op.fFlags = FOF_ALLOWUNDO Or FOF_NOCONFIRMATION Or FOF_NOERRORUI Or FOF_SILENT
+
+            Dim result As Integer
+            result = SHFileOperationW(op)
+
+            If result <> 0 Then
+                Throw New IOException(CStr(result))
+            End If
+        End Sub
 
     End Class
 End Namespace
